@@ -1,4 +1,4 @@
-module go-parsy
+module github.com/agustin-del-pino/go-parsy
 
 go 1.19
 
