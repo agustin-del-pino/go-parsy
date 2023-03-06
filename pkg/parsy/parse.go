@@ -22,6 +22,6 @@ func ParseString(i *Inspector, s string) error {
 	return parse(i, "", s)
 }
 
-func InspectFile(i *Inspector, p string) error {
+func ParseFile(i *Inspector, p string) error {
 	return parse(i, p, nil)
 }
