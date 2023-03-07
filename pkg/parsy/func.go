@@ -5,8 +5,9 @@ import "go/ast"
 type ReturnCaseType int
 
 type FuncRecv struct {
-	Name  string
-	Ident *ast.Ident
+	IsPointer bool
+	Name      string
+	Ident     *ast.Ident
 }
 
 type CastExpr struct {
@@ -68,12 +69,13 @@ func GetFuncReceivers(fn *ast.FuncDecl) ([]*FuncRecv, bool) {
 		var rcvT ast.Node
 
 		if se, ok := AsStarExpr(fn.Recv.List[i].Type); ok {
+			frs[i].IsPointer = true
 			rcvT = se.X
 		} else {
 			rcvT = fn.Recv.List[i].Type
 		}
 
-		if idt, ok := AsIdent(rcvT); ok {
+		if idt, ok := AsIdent(rcvT); !ok {
 			return nil, false
 		} else {
 			frs[i].Ident = idt
@@ -100,7 +102,7 @@ func GetFuncReturnTypes(fn *ast.FuncDecl) ([]*FuncReturnType, bool) {
 	for i := range ft {
 		ft[i] = &FuncReturnType{}
 
-		n := fn.Type.Results.List[0].Type
+		n := fn.Type.Results.List[i].Type
 
 		if se, ok := AsStarExpr(n); ok {
 			ft[i].IsPointer = true
@@ -138,6 +140,7 @@ func GetFuncReturnCases(fn *ast.FuncDecl) ([]*FuncReturnCase, bool) {
 				Expr: rs.Results[i],
 			}
 		}
+		frc = append(frc, fc)
 	})
 
 	InspectNode(i, fn)
