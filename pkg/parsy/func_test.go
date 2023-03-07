@@ -7,7 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const src = `
+func TestGetFuncInfo_with_no_receiver(t *testing.T) {
+	const src = `
 package main;
 
 func Foo(i int) (string, error) {
@@ -15,17 +16,59 @@ func Foo(i int) (string, error) {
 }
 
 `
+	fn := setUp(src)
 
-func TestGetFuncInfo(t *testing.T) {
-	fn := setUp()
-	
+	fi := GetFuncInfo(fn)
+	commonAsserts(t, fi)
+	assert.Nil(t, fi.Receivers)
+
+}
+
+func TestGetFuncInfo_with_receiver(t *testing.T) {
+	const src = `
+	package main
+
+	type MyStruct struct {}
+
+	func (m MyStruct) Foo() (string, error) {
+		return "hello", nil
+	}
+
+	`
+	fn := setUp(src)
+
 	fi := GetFuncInfo(fn)
 
+	commonAsserts(t, fi)
+	commonReceiverAsserts(t, fi)
+	assert.False(t, fi.Receivers[0].IsPointer)
+}
+
+func TestGetFuncInfo_with_star_receiver(t *testing.T) {
+	const src = `
+	package main
+
+	type MyStruct struct {}
+
+	func (m *MyStruct) Foo() (string, error) {
+		return "hello", nil
+	}
+
+	`
+	fn := setUp(src)
+
+	fi := GetFuncInfo(fn)
+
+	commonAsserts(t, fi)
+	commonReceiverAsserts(t, fi)
+	assert.True(t, fi.Receivers[0].IsPointer)
+}
+
+func commonAsserts(t *testing.T, fi *FuncInfo) {
 	assert.NotNil(t, fi)
 	assert.Equal(t, "Foo", fi.Name)
-	assert.Nil(t, fi.Receivers)
 	assert.NotNil(t, fi.Returns)
-	
+
 	assert.Len(t, fi.Returns.Types, 2)
 	assert.False(t, fi.Returns.Types[0].IsPointer)
 	assert.NotNil(t, fi.Returns.Types[0].Ident)
@@ -39,9 +82,18 @@ func TestGetFuncInfo(t *testing.T) {
 	assert.Len(t, fi.Returns.ReturnCases[0].Results, 2)
 	assert.NotNil(t, fi.Returns.ReturnCases[0].Results[0])
 	assert.NotNil(t, fi.Returns.ReturnCases[0].Results[1])
+
 }
 
-func setUp() *ast.FuncDecl {
+func commonReceiverAsserts(t *testing.T, fi *FuncInfo) {
+	assert.NotNil(t, fi.Receivers)
+	assert.Len(t, fi.Receivers, 1)
+	assert.NotNil(t, fi.Receivers[0])
+	assert.Equal(t, "m", fi.Receivers[0].Name)
+	assert.Equal(t, "MyStruct", fi.Receivers[0].Ident.Name)
+}
+
+func setUp(s string) *ast.FuncDecl {
 	i := NewInspector(&InspectorOptions{AvoidNil: true})
 	var fn *ast.FuncDecl
 
@@ -49,7 +101,7 @@ func setUp() *ast.FuncDecl {
 		fn = fd
 	})
 
-	ParseString(i, src)
+	ParseString(i, s)
 
 	return fn
 }
